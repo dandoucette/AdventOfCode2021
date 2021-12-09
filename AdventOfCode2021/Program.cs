@@ -10,9 +10,8 @@ namespace AdventOfCode2021
 
             //try
             //{
-                long answer = 0;
 
-                answer = Day8.B();
+                var answer = Day9.A();
 
                 Console.WriteLine();
                 Console.WriteLine("============================");
