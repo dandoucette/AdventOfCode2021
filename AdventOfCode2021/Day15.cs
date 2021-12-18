@@ -50,7 +50,7 @@ namespace AdventOfCode2021
                 activeTiles.Remove(checkTile);
                 
 
-                foreach (var neighbourTile in GetValidNeighbours(cave, checkTile, finish, 1))
+                foreach (var neighbourTile in GetValidNeighbours(cave, checkTile, finish, 2))
                 {
                     if (visitedTiles.Any(tile => tile.X == neighbourTile.X && tile.Y == neighbourTile.Y))
                         continue;
@@ -119,7 +119,7 @@ namespace AdventOfCode2021
                     newTilesOnly.AddRange(neighbours);
                 }
                 newTilesOnly.RemoveAll(t => t.X == currentTile.X && t.Y == currentTile.Y);
-                stepTiles = newTilesOnly;
+                stepTiles = newTilesOnly.Distinct().ToList();
             }
 
             foreach (var tile in validTiles)
@@ -151,7 +151,7 @@ namespace AdventOfCode2021
         }
     }
 
-    public class Tile
+    public class Tile : IEquatable<Tile>
     {
         public int Risk { get; set; }
         public int X { get; set; }
@@ -184,6 +184,16 @@ namespace AdventOfCode2021
                 }
                 return parents;
             }
+        }
+
+        public bool Equals(Tile other)
+        {
+            return other.X == X && other.Y == Y;
+        }
+
+        public override int GetHashCode()
+        {
+            return X.GetHashCode() ^ Y.GetHashCode();
         }
 
         public void SetDistances(int targetX, int targetY)
