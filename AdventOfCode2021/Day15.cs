@@ -12,66 +12,75 @@ namespace AdventOfCode2021
         public static int A()
         {
             var lines = File.ReadLines("InputData\\Day15.txt").ToList();
-            int maxX = lines[0].Length;
-            int maxY = lines.Count;
-            var cave = new int[maxX, maxY];
-
-            for (int y = 0; y < maxY; y++)
+            var cave = new List<string>();
+            foreach (var line in lines)
             {
-                for (int x = 0; x < maxX; x++)
-                {
-                    cave[x, y] = int.Parse(lines[y][x].ToString());
-                }
+                cave.Add(line);
             }
 
-            var paths = new List<string>();
-            addPath(0, 0, "0");
-
-            void addPath(int x, int y, string currentPath)
+            var start = new Tile
             {
-                var path = "";
-                if (x != maxX - 1)
+                X = 0,
+                Y = 0,
+                Risk = 0
+            };
+
+            var finish = new Tile
+            {
+                X = lines.First().Length - 1,
+                Y = lines.Count - 1
+            };
+
+            start.SetDistances(finish.X, finish.Y);
+            var activeTiles = new List<Tile>();
+            activeTiles.Add(start);
+            var visitedTiles = new List<Tile>();
+            var completedPaths = new List<Tile>();
+
+            while(activeTiles.Any())
+            {
+                var checkTile = activeTiles.OrderBy(t => t.ManhattanCost).ThenBy(t => t.Risk).First();
+                if (checkTile.X == finish.X && checkTile.Y == finish.Y)
                 {
-                    //newPaths.Add(addPath(x+1, y));
-                    path = $"{currentPath},{cave[x + 1, y]}";
-                    continuePath(x + 1, y, path);
+                    finish = checkTile;
+                    break;
                 }
                 
-                if (y != maxY - 1)
-                {
-                    //newPaths.Add(addPath(x, y+1));
-                    path = $"{currentPath},{cave[x, y + 1]}";
-                    continuePath(x, y + 1, path);
-                }
+                visitedTiles.Add(checkTile);
+                activeTiles.Remove(checkTile);
+                
 
-                string continuePath(int x1, int y1, string path1)
+                foreach (var neighbourTile in GetValidNeighbours(cave, checkTile, finish, 1))
                 {
-                    if (!(x1 == maxX - 1 && y1 == maxY - 1))
+                    if (visitedTiles.Any(tile => tile.X == neighbourTile.X && tile.Y == neighbourTile.Y))
+                        continue;
+
+                    if (activeTiles.Any(tile => tile.X == neighbourTile.X && tile.Y == neighbourTile.Y))
                     {
-                        addPath(x1, y1, path1);
+                        var existingTile = activeTiles.First(tile => tile.X == neighbourTile.X && tile.Y == neighbourTile.Y);
+                        if (existingTile.ManhattanCost > checkTile.ManhattanCost)
+                        {
+                            activeTiles.Remove(existingTile);
+                            activeTiles.Remove(neighbourTile);
+                        }
                     }
                     else
                     {
-                        paths.Add(path1);
+                        activeTiles.Add(neighbourTile);
                     }
-                    return "";
                 }
             }
 
-            int leastRisk = 2000000000;
-            foreach (var path in paths)
+            Tile lastTile = finish;
+            string path = lastTile.Risk.ToString();
+            while(lastTile.Parent != null)
             {
-                var risks = path.Split(',');
-                int totalRisk = 0;
-                for (int i = 0; i < risks.Length; i++)
-                {
-                    totalRisk += int.Parse(risks[i]);
-                }
-                if (totalRisk < leastRisk)
-                    leastRisk = totalRisk;
+                path = $"{lastTile.Parent.Risk},{path}";
+                lastTile = lastTile.Parent;
             }
-
-            return leastRisk;
+            Console.WriteLine(path);
+            
+            return finish.TotalRisk;
 
         }
 
@@ -79,68 +88,126 @@ namespace AdventOfCode2021
         {
             return 0;
         }
+
+        private static List<Tile> GetValidNeighbours(List<string> map, Tile currentTile, Tile targetTile, int stepsToLookAhead)
+        {
+
+            var validTiles = GetNeighbours(currentTile);            
+            
+            validTiles.ForEach(tile => tile.SetDistances(targetTile.X, targetTile.Y));
+
+            //store all tiles we know about
+            var allTiles = new List<Tile>
+            {
+                currentTile
+            };
+            allTiles.AddRange(validTiles);
+
+            //store only tiles we need to explore
+            var stepTiles = validTiles;
+
+            //new tiles will show the last set of tiles we explored
+            var newTilesOnly = new List<Tile>();
+
+            for (int i = 0; i < stepsToLookAhead; i++)
+            {
+                newTilesOnly.Clear();
+                foreach (var tile in stepTiles)
+                {
+                    var neighbours = GetNeighbours(tile);
+                    allTiles.AddRange(neighbours.Where(t => !allTiles.Any(t2 => t2.X == t.X && t2.Y == t.Y)));
+                    newTilesOnly.AddRange(neighbours);
+                }
+                newTilesOnly.RemoveAll(t => t.X == currentTile.X && t.Y == currentTile.Y);
+                stepTiles = newTilesOnly;
+            }
+
+            foreach (var tile in validTiles)
+            {
+                tile.LookAheadRisk = newTilesOnly.Where(t => t.Parents.Any(t2 => t2.X == tile.X && t2.Y == tile.Y)).Min(t => t.TotalRisk);
+            }
+            
+            return validTiles;
+
+            List<Tile> GetNeighbours(Tile sourceTile)
+            {
+                var possiblities = new List<Tile>()
+                {
+                    new Tile { X = sourceTile.X, Y = sourceTile.Y - 1, Parent = sourceTile },
+                    new Tile { X = sourceTile.X, Y = sourceTile.Y + 1, Parent = sourceTile },
+                    new Tile { X = sourceTile.X - 1, Y = sourceTile.Y, Parent = sourceTile },
+                    new Tile { X = sourceTile.X + 1, Y = sourceTile.Y, Parent = sourceTile },
+                };
+
+                int maxX = map.First().Length - 1;
+                int maxY = map.Count - 1;
+
+                var validTiles =  possiblities.Where(t => t.X >= 0 && t.X <= maxX
+                                   && t.Y >= 0 && t.Y <= maxY).ToList();
+                validTiles.ForEach(tile => tile.Risk = int.Parse(map[tile.Y][tile.X].ToString()));
+
+                return validTiles;
+            }
+        }
     }
 
-    public class Path
+    public class Tile
     {
         public int Risk { get; set; }
         public int X { get; set; }
         public int Y { get; set; }
+        public int ManhattanDistance { get; set; }
+        public double EuclideanDistance { get; set; }
+        public int ManhattanCost => (Risk + (LookAheadRisk - TotalRisk)) + ManhattanDistance;
+        public double EuclideanCost => LookAheadRisk + EuclideanDistance;
+        public Tile Parent { get; set; }
+        public int LookAheadRisk { get; set; }
+
+        public int TotalRisk
+        {
+            get
+            {
+                return Parents.Sum(t => t.Risk);
+            }
+        }
+
+        public List<Tile> Parents
+        {
+            get
+            {
+                var parents = new List<Tile>();
+                Tile tile = this;
+                while (tile.Parent != null)
+                {
+                    parents.Add(tile);
+                    tile = tile.Parent;
+                }
+                return parents;
+            }
+        }
+
+        public void SetDistances(int targetX, int targetY)
+        {
+            this.ManhattanDistance = Math.Abs(targetX - X) + Math.Abs(targetY - Y);
+            this.EuclideanDistance = Math.Sqrt(Math.Pow(Math.Abs(targetX - X), 2) + Math.Pow(Math.Abs(targetY - Y), 2));
+        }
+    }
+
+    public class Point
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+
+        public (int X, int Y) SubtractPoint(Point point)
+        {
+            int x = Math.Abs(point.X - X);
+            int y = Math.Abs(point.Y - Y);
+            return (x, y);
+        }
+
+        public bool Equals(Point point)
+        {
+            return point.X == X && point.Y == Y;
+        }
     }
 }
-
-/*List<List<Path>> addPaths(int x, int y, List<Path> currentPath)
-            {
-                var newPaths = new List<List<Path>>();
-
-                if (x != maxX - 1)
-                {
-                    var path = addPath(x + 1, y);
-                    if (path != null && path.Count > 0)
-                        newPaths.Add(path);
-                }
-
-                if (y != maxY - 1)
-                {
-                    var path = addPath(x, y + 1);
-                    if (path != null && path.Count > 0)
-                        newPaths.Add(path);
-                }
-
-                //if (x != 0)
-                //{
-                //    var path = addPath(x - 1, y);
-                //    if(path.Count > 0)
-                //        newPaths.Add(path);
-                //}
-
-                //if(y != 0)
-                //{
-                //    var path = addPath(x, y - 1);
-                //    if(path.Count > 0)
-                //        newPaths.Add(path);
-                //}
-
-                List<Path> addPath(int x, int y)
-                {
-                    var newPath = new List<Path>();
-                    if (!currentPath.Where(p => p.X == x && p.Y == y).Any())
-                    {
-
-                        newPath.AddRange(currentPath);
-                        newPath.Add(
-                            new Path
-                            {
-                                X = x,
-                                Y = y,
-                                Risk = cave[x, y]
-                            });
-
-                        if(!(x == maxX - 1 && y == maxY - 1))
-                            newPaths.AddRange(addPaths(x, y, newPath));
-                    }
-                    return newPath;
-                }
-
-                return newPaths;
-            }*/
