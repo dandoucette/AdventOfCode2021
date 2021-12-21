@@ -21,5 +21,10 @@ namespace AdventOfCode2021.Classes
                 return Convert.ToInt32(valueBits, 2);
             }
         }
+
+        public LiteralPacket()
+        {
+            Literals = new List<string>();
+        }
     }
 }
