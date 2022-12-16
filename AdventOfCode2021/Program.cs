@@ -11,8 +11,8 @@ namespace AdventOfCode2021
             //try
             //{
 
-            //var answer = Day16.A();
-            var answer = Day15.B();
+            var answer = Day17.A();
+            
             
 
                 Console.WriteLine();

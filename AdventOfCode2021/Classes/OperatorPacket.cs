@@ -17,10 +17,10 @@ namespace AdventOfCode2021.Classes
         private string _packetSize;
         public string SubPacketsSize { set { _packetSize = value; } }
 
-        public int NumberOfSubPackets => Type == PacketType.Operator
+        public int NumberOfSubPackets => TypeDisplay == PacketType.Operator
                                     && LengthType == LengthType.ElevenBit
                                     ? Convert.ToInt32(_packetSize, 2) : 0;
-        public int LengthOfSubPackets => Type == PacketType.Operator
+        public int LengthOfSubPackets => TypeDisplay == PacketType.Operator
                                     && LengthType == LengthType.FiftenBit
                                     ? Convert.ToInt32(_packetSize, 2) : 0;
     }
